@@ -181,44 +181,44 @@ function startInterval () {
 }
 
 function sayHi (){
-    let messagePoints = resetPoints();
+    let messagePoints = getMessagePoints();
     let aux = 0;
 
+    const intensity = Math.pow((canvas.width * 12.00 / 1921.00) / 200.00, 3);
+
     setInterval(() => { 
-        splatMessage(messagePoints[aux++]);
+        splatMessage(messagePoints[aux++], intensity);
         if (aux === messagePoints.length)
             aux = 0;
     },1800)
 }
 
-function resetPoints () {
+function getMessagePoints () {
+    const variant = canvas.width * 20 / 1921;
+
     return  [
-        getLettersPoints(" Hola "),
-        getLettersPoints(" mundo! ")
+        getLettersPoints(" HOLA ", variant),
+        getLettersPoints(" MUNDO! ", variant)
     ];
 }
 
-function getLettersPoints (message) {
-    const variant = canvas.width * 14 / 1477;
+function getLettersPoints (message, positionConstant) {
+    const density = 1200000000;
+    const ctx = document.createElement('canvas').getContext('2d');
 
-    var i, data32;
-
-    let captureCanvas = document.createElement('canvas');
-    let ctx = captureCanvas.getContext('2d');
-
-    const points = [];    
-    ctx.font = `10px Arial`;                          
+    ctx.font = '10px Arial';                          
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.rotate(-10 * Math.PI / 180);
     ctx.fillText(message, -3, 35); 
 
-    data32 = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
+    let data32 = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
 
-    for(i = 0; i < data32.length; i++) {
-        if (data32[i] > 1700000000) {
+    const points = [];    
+    for(var i = 0; i < data32.length; i++) {
+        if (data32[i] > density) {
             points.push({            
-                x: (i % canvas.width) * variant,
-                y: ((i / canvas.width)) * variant
+                x: (i % canvas.width) * positionConstant,
+                y: (i / canvas.width) * positionConstant
             });
         }
     }
@@ -226,25 +226,24 @@ function getLettersPoints (message) {
     return points;
   }
 
-function splatMessage (points) {
-    var color = generateColor();
+function splatMessage (points, intensity) {
+    let color = generateColor();
     color.r *= 10.0;
     color.g *= 10.0;
     color.b *= 10.0;
     points.forEach(point => {
-        draw(point.x, point.y, color);
+        draw(point.x, point.y, color, intensity);
     });
 }
 
-function draw (x, y, color) {
-    const thickness = 0.00015;
+function draw (x, y, color, intensity) {
     gl.viewport(0, 0, velocity.width, velocity.height);
     splatProgram.bind();
     gl.uniform1i(splatProgram.uniforms.uTarget, velocity.read.attach(0));
     gl.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
     gl.uniform2f(splatProgram.uniforms.point, x / canvas.width, 1.0 - y / canvas.height);
-    gl.uniform3f(splatProgram.uniforms.color, x, -y, 1.0);
-    gl.uniform1f(splatProgram.uniforms.radius, thickness);
+    gl.uniform1f(splatProgram.uniforms.radius, intensity);
+
     blit(velocity.write.fbo);
 
     gl.viewport(0, 0, dye.width, dye.height);
@@ -1116,7 +1115,6 @@ function resizeCanvas () {
     if (canvas.width != width || canvas.height != height) {
         canvas.width = width;
         canvas.height = height;
-        resetPoints();
         return true;
     }
     return false;
